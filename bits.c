@@ -143,18 +143,19 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return ~(~x & ~y);
+  //&：1-->1；|：0-->0；xor：0-->1, 1-->0;
+  //~ (a & b) & (a | b) = a ^ b
+  return ~(~x & ~y) & ~(x & y);
 }
 /* 
  * tmin - return minimum two's complement integer 
- *   Legal ops: ! ~ & ^ | + << >>
+ *   Legal ops: ! ~ & ^ | + << >                                                                  >
  *   Max ops: 4
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
-
+ //最小的补码 -2^(w - 1)
+  return 1 << 31;
 }
 //2
 /*
@@ -165,7 +166,9 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  //最大的补码 2^(w - 1) - 1
+  //最大值为0x7fff ffff，加一后将变为0x8000 0000，且此数加上本身后将变为0。本身加本身为0的数只有0和0x8000 0000，因此，只需将0xffffffff排除即可
+  return !(x + 1 + x + 1) & !!(x + 1);
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +179,9 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  unsigned int a = 0xAA + (0xAA << 8);
+  a = a + (a << 16)
+  return (x & a) & 1;
 }
 /* 
  * negate - return -x 
@@ -186,7 +191,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return ~x + 1;
 }
 //3
 /* 
@@ -199,7 +204,7 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  return !(x + ~48 + 1) >> 31 & (x + ~58 +1) >> 31;
 }
 /* 
  * conditional - same as x ? y : z 
