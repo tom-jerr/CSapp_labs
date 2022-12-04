@@ -144,8 +144,8 @@ NOTES:
  */
 int bitXor(int x, int y) {
   //&：1-->1；|：0-->0；xor：0-->1, 1-->0;
-  //~ (a & b) & (a | b) = a ^ b
-  return ~(~x & ~y) & ~(x & y);
+  // (a & ~b) | (~a & b) = a ^ b
+  return ~(~(~x&y)&~(x&~y));
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -179,9 +179,9 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  unsigned int a = 0xAA + (0xAA << 8);
-  a = a + (a << 16)
-  return (x & a) & 1;
+  int a = 0xAA + (0xAA << 8);
+  a = a + (a << 16);
+  return !((x & a) ^ a);
 }
 /* 
  * negate - return -x 
@@ -204,7 +204,7 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return !(x + ~48 + 1) >> 31 & (x + ~58 +1) >> 31;
+  return !((x + ~48 + 1) >> 31) & !!((x + ~58 +1) >> 31);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -214,9 +214,9 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-
-  
-  return 2;
+  int x1 = ((!x) << 31) >> 31;
+  int x2 = ((!!x) << 31) >> 31; 
+  return (x1 & z) | (x2 & y);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -226,7 +226,12 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  //分为两种情况：同号和异号，防止溢出
+  int con1 = !(x ^ y);
+  int con2 = !(!((x >> 31) & 1) & ((y>>31) & 1));
+  int con3 = ((x >> 31) & 1) & !((y>>31) & 1);
+  int con4 = ((x + (~y) + 1) >> 31) & 1;
+  return con1 | con3 | (con2 & con4);
 }
 //4
 /* 
@@ -238,7 +243,10 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  //一个非0的数与其相反数一定符号位有不同
+  int neg = x|((~x) + 1);
+	int sign = neg >> 31;   //sign为0或-1
+	return sign + 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -253,7 +261,31 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  //返回在补码中能够代表x所需的最小位数
+  //使用二分法进行操作
+  int b16, b8, b4, b2, b1, b0;
+  int mask = x >> 31;
+  x = (mask & ~x) | (~mask & x); //如果为正数，保持不变；如果为负数，按位取反
+
+  //step1:判断高16为是否有1
+  b16 = !!(x >> 16) << 4; //如果高16为有1,则b16 = 16，否则为0
+  x >>= b16;              //如果高16为有1,x右移16位舍弃低16位,在新的低16位继续查找；否则保持不变
+  //step2:判断高8位是否有1
+  b8 = !!(x >> 8) << 3;
+  x >>= b8;
+  //step3:高4位
+  b4 = !!(x >> 4) << 2;
+  x >>= b4;
+  //step4:高2位
+  b2 = !!(x >> 2) << 1;
+  x >>= b2;
+  //step5:高1位
+  b1 = !!(x >> 1);
+  x >>= b1;
+  //step6:低1位
+  b0 = x;
+
+  return b16 + b8 + b4 + b2 + b1 + b0 + 1;  //+1表示加上符号位
 }
 //float
 /* 
@@ -268,7 +300,16 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  int exp = (uf & 0x7f800000) >> 23; //取出指数部分
+  int sign = uf & (1 << 31);         //取出符号位
+  if (exp == 255)
+    return uf;
+  if (exp == 0)
+    return uf << 1 | sign;
+  ++exp;
+  if (exp == 255)
+    return 0x7f800000 | sign;           //exp+1 = uf * 2 返回无穷大
+  return exp << 23 | (0x807fffff & uf); //否则返回常规uf*2
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -283,7 +324,33 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  //阶码的值：E = e - Bias(127)
+  //尾数的值：M = 1 + frac(隐式编码法，隐含的1)
+  //1 <= M <= 2
+  //uf为无符号整数，将其强制转换为单精度浮点数
+  //1. 规格化的值
+  int sign = (uf >> 31) & 1;
+  int exp = (uf >> 23) & 0xff;
+  int frac = uf & 0x7fffff;
+  int E = exp - 127;
+  if (E < 0) return 0;
+  //E>=31时，1.frac*2^E次方加一个符号位，超出int范围
+  else if (E >= 31) return 0x80000000u;
+  else
+  {
+    frac = frac | (1 << 23); //加上隐含的1
+    if (E < 23)              //需要舍弃frac中部分位
+    {
+      frac = frac >> (23 - E);
+    }
+    else //不需要舍弃部分位
+    {
+      frac = frac << (E - 23);
+    }
+  }
+  if (sign) return -frac;
+  else return frac;
+
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -299,5 +366,10 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+    if (x >= 128) return 0x7f800000;  // 超过128越界了
+    if (x >= -126) return (x + 127) << 23; // -126在界内，直接放进e
+    if (x >= -150)          //我们还有23位小数，也可以来表示一下
+        return 1 << (x + 150);
+    else
+        return 0;
 }
