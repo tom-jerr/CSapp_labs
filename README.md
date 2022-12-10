@@ -64,3 +64,59 @@ Border relations with Canada have never been better.
 ```
 ### Input
 1 2 4 8 16 32
+
+
+
+------
+
+## phase_3
+
+```c
+  400f43:	48 83 ec 18          	sub    $0x18,%rsp
+  400f47:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx	//存储第二个数
+  400f4c:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx	//存储第一个数
+  400f51:	be cf 25 40 00       	mov    $0x4025cf,%esi	//存放输入数据（x/s 0x4025cf）
+  400f56:	b8 00 00 00 00       	mov    $0x0,%eax
+  400f5b:	e8 90 fc ff ff       	callq  400bf0 <__isoc99_sscanf@plt>
+  400f60:	83 f8 01             	cmp    $0x1,%eax	//此时eax中存放scanf返回值，输入数据的														//个数
+  400f63:	7f 05                	jg     400f6a <phase_3+0x27>	//大于1则跳转
+  400f65:	e8 d0 04 00 00       	callq  40143a <explode_bomb>
+  400f6a:	83 7c 24 08 07       	cmpl   $0x7,0x8(%rsp)	//判断num1是否大于7
+  400f6f:	77 3c                	ja     400fad <phase_3+0x6a>	//大于则跳转执行																			//<explode_bomb>
+  400f71:	8b 44 24 08          	mov    0x8(%rsp),%eax	//eax中存放第一个数
+  400f75:	ff 24 c5 70 24 40 00 	jmpq   *0x402470(,%rax,8)	//switch判断(x/8xg 																		//0x402470查看case对应的内																//存)
+  400f7c:	b8 cf 00 00 00       	mov    $0xcf,%eax	//case 0 
+  400f81:	eb 3b                	jmp    400fbe <phase_3+0x7b>
+  400f83:	b8 c3 02 00 00       	mov    $0x2c3,%eax	//case 2
+  400f88:	eb 34                	jmp    400fbe <phase_3+0x7b>
+  400f8a:	b8 00 01 00 00       	mov    $0x100,%eax	//case 3
+  400f8f:	eb 2d                	jmp    400fbe <phase_3+0x7b>
+  400f91:	b8 85 01 00 00       	mov    $0x185,%eax	//case 4
+  400f96:	eb 26                	jmp    400fbe <phase_3+0x7b>
+  400f98:	b8 ce 00 00 00       	mov    $0xce,%eax	//case 5
+  400f9d:	eb 1f                	jmp    400fbe <phase_3+0x7b>
+  400f9f:	b8 aa 02 00 00       	mov    $0x2aa,%eax	//case 6
+  400fa4:	eb 18                	jmp    400fbe <phase_3+0x7b>
+  400fa6:	b8 47 01 00 00       	mov    $0x147,%eax	//case 7
+  400fab:	eb 11                	jmp    400fbe <phase_3+0x7b>
+  400fad:	e8 88 04 00 00       	callq  40143a <explode_bomb>
+  400fb2:	b8 00 00 00 00       	mov    $0x0,%eax
+  400fb7:	eb 05                	jmp    400fbe <phase_3+0x7b>
+  400fb9:	b8 37 01 00 00       	mov    $0x137,%eax	//case 1
+  400fbe:	3b 44 24 0c          	cmp    0xc(%rsp),%eax	//判断num2与eax中的值是否相等
+  400fc2:	74 05                	je     400fc9 <phase_3+0x86>
+  400fc4:	e8 71 04 00 00       	callq  40143a <explode_bomb>
+  400fc9:	48 83 c4 18          	add    $0x18,%rsp
+  400fcd:	c3                   	retq   
+```
+
+
+
+x表明以十六进制的形式显示地址，g表示每8个字节的内存，因为这是x64平台，所以地址占8个字节
+
+```shell
+x/8xg 0x402470
+```
+### Input
+**0 207	1 311	2 707	3 256	4 389	5 206	6 682	7 327**
+
